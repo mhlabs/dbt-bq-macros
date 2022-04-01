@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: log_to_scd_model
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_scd_output')
+  - name: log_to_latest_model
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_latest_output')
+  - name: log_to_latest_nested_model
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_log_to_latest_nested_output')
+          compare_columns:
+            - product_id
+            - supplier
+            - price
+            - updated_at
+  - name: stg_dedup
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_stg_dedup_data')
+          compare_columns:
+            - product_id
+            - brand
+            - supplier
+            - price
+            - updated_at
+    columns: 
+      - name: product_event_id
+        tests:
+          - unique
+          - not_null
+  - name: stg_dedup_nested_id
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_stg_dedup_nested_id')
+          compare_columns:
+            - product_id
+            - brand
+            - supplier
+            - price
+            - updated_at
+    columns: 
+      - name: product_event_id
+        tests:
+          - unique
+          - not_null
+  - name: stg_dedup_nested_timestamp
+    tests:
+      - dbt_utils.equality:
+          compare_model: ref('expected_stg_dedup_nested_timestamp')
+          compare_columns:
+            - product_id
+            - brand
+            - supplier
+            - price
+            - updated_at
+    columns: 
+      - name: product_event_id
+        tests:
+          - unique
+          - not_null
