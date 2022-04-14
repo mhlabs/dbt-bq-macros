@@ -1,12 +1,12 @@
-{%- macro log_to_latest_nested(table, key, sort_key) -%}
+{%- macro log_to_latest_nested(table, key, sort_key, nested_attributes, attribute_key) -%}
   SELECT
   deduped.* EXCEPT(row_num)
 FROM (
   SELECT
     _inner.*,
-    ROW_NUMBER() OVER (PARTITION BY {{ key }} ORDER BY {{ sort_key }} DESC, (SELECT a.value FROM UNNEST(_attributes) AS a
+    ROW_NUMBER() OVER (PARTITION BY {{ key }} ORDER BY {{ sort_key }} DESC, (SELECT a.value FROM UNNEST({{ nested_attributes }}) AS a
       WHERE
-        a.key = 'timestamp' ) DESC ) AS row_num
+        a.key = "{{ attribute_key }}" ) DESC ) AS row_num
   FROM
     {{ table }} AS _inner ) AS deduped
 WHERE

@@ -1,37 +1,37 @@
-WITH test_data as (
-    SELECT 
-        1 as product_id,
-        2 as brand,
-        1 as supplier,
-        10 as price,
-        TIMESTAMP(DATE('2021-01-02')) as updated_at,
+WITH test_data AS (
+    SELECT
+        1 AS product_id,
+        2 AS brand,
+        1 AS supplier,
+        10 AS price,
+        TIMESTAMP(DATE('2021-01-02')) AS updated_at,
         [
             STRUCT(
-                "timestamp" as key,
-                CAST(TIMESTAMP(DATE('2021-01-02')) AS STRING) as value
+                "timestamp" AS key,
+                CAST(TIMESTAMP(DATE('2021-01-02')) AS STRING) AS value
             ),
             STRUCT(
-                "eventId" as key,
-                "12234" as value
+                "eventId" AS key,
+                "12234" AS value
             )
-        ] as _attributes
-    UNION all
-    SELECT 
-        2 as product_id,
-        2 as brand,
-        1 as supplier,
-        10 as price,
-        TIMESTAMP(DATE('2021-01-03')) as updated_at,
+        ] AS _attributes
+    UNION ALL
+    SELECT
+        2 AS product_id,
+        2 AS brand,
+        1 AS supplier,
+        10 AS price,
+        TIMESTAMP(DATE('2021-01-03')) AS updated_at,
         [
             STRUCT(
-                "timestamp" as key,
-                CAST(TIMESTAMP(DATE('2021-01-03')) AS STRING) as value
+                "timestamp" AS key,
+                CAST(TIMESTAMP(DATE('2021-01-03')) AS STRING) AS value
             ),
             STRUCT(
-                "eventId" as key,
-                "12234" as value
+                "eventId" AS key,
+                "12234" AS value
             )
-        ] as _attributes
+        ] AS _attributes
 )
 
-select * from test_data
+SELECT * FROM test_data

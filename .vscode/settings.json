@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.yaml": "jinja-yaml",
+        "*.sql": "jinja-sql",
+    },
+    "editor.quickSuggestions": {
+        "strings": true
+    },
+    "dbt.listModelsDisabled": true,
+    "editor.formatOnSave": false,
+    "sql.linter.executablePath": "",
+}

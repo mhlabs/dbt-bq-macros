@@ -1,37 +1,37 @@
-WITH expected_data as (
-    SELECT 
-        1 as product_id,
-        1 as brand,
-        1 as supplier,
-        10 as price,
-        TIMESTAMP(DATE('2021-01-01')) as updated_at,
+WITH expected_data AS (
+    SELECT
+        1 AS product_id,
+        1 AS brand,
+        1 AS supplier,
+        10 AS price,
+        TIMESTAMP(DATE('2021-01-01')) AS updated_at,
         [
             STRUCT(
-                "timestamp" as key,
-                CAST(TIMESTAMP(DATE('2021-01-01')) AS STRING) as value
+                "timestamp" AS key,
+                CAST(TIMESTAMP(DATE('2021-01-01')) AS STRING) AS value
             ),
             STRUCT(
-                "eventId" as key,
-                "1" as value
+                "eventId" AS key,
+                "1" AS value
             )
-        ] as _attributes
-    UNION all
-    SELECT 
-        1 as product_id,
-        2 as brand,
-        1 as supplier,
-        10 as price,
-        TIMESTAMP(DATE('2021-01-02')) as updated_at,
+        ] AS _attributes
+    UNION ALL
+    SELECT
+        1 AS product_id,
+        2 AS brand,
+        1 AS supplier,
+        10 AS price,
+        TIMESTAMP(DATE('2021-01-02')) AS updated_at,
         [
             STRUCT(
-                "timestamp" as key,
-                CAST(TIMESTAMP(DATE('2021-01-02')) AS STRING) as value
+                "timestamp" AS key,
+                CAST(TIMESTAMP(DATE('2021-01-02')) AS STRING) AS value
             ),
             STRUCT(
-                "eventId" as key,
-                "2" as value
+                "eventId" AS key,
+                "2" AS value
             )
-        ] as _attributes
+        ] AS _attributes
 )
 
-select * from expected_data
+SELECT * FROM expected_data

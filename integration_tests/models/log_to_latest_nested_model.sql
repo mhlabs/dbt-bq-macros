@@ -52,7 +52,7 @@ WITH test_data as (
 ),
 
 latest_nested as (
-    {{ dbt_bq_macros.log_to_latest_nested('test_data', 'product_id', 'updated_at') }}
+    {{ dbt_bq_macros.log_to_latest_nested('test_data', 'product_id', 'updated_at', '_attributes', 'timestamp') }}
 )
 
 select * from latest_nested

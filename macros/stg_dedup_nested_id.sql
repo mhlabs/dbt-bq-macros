@@ -1,4 +1,4 @@
-{%- macro stg_dedup_nested_id(table, id, event_id, pk, sort_key) -%}
+{%- macro stg_dedup_nested_id(table, id, event_id, pk, sort_key, nested_attributes) -%}
 {% set id = id %}
 WITH
     added_columns AS (
@@ -8,7 +8,7 @@ WITH
         SELECT
             A.value
         FROM
-          UNNEST(_ATTRIBUTES) AS a
+          UNNEST({{ nested_attributes }}) AS a
         WHERE
           key = {{ event_id }} ) AS event_id
     FROM {{ table }} ),

@@ -52,7 +52,7 @@ WITH test_data as (
 ),
 
 stg_dedup as (
-    {{ dbt_bq_macros.stg_dedup_nested_id('test_data', 'product_id', '"eventId"', 'product_event_id', 'updated_at') }}
+    {{ dbt_bq_macros.stg_dedup_nested_id('test_data', 'product_id', '"eventId"', 'product_event_id', 'updated_at', '_attributes') }}
 )
 
 select * from stg_dedup
