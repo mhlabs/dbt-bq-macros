@@ -5,6 +5,12 @@ models:
     tests:
       - dbt_utils.equality:
           compare_model: ref('expected_scd_output')
+          compare_columns:
+            - product_id
+            - supplier
+            - price
+            - valid_from
+            - valid_to
   - name: log_to_latest_model
     tests:
       - dbt_utils.equality:

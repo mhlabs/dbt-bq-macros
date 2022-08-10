@@ -49,13 +49,13 @@ WITH
     COALESCE( LEAD(timestamp_sub(source.{{ updated_at }}, INTERVAL 1 MILLISECOND), 1) OVER(PARTITION BY source.{{ id }} ORDER BY {{ updated_at }}),
       "2050-01-01 00:00:00" ) AS end_time,
     -- add a json string with all data minus the columns that should be excluded
-    TO_JSON_STRING((
+    TO_HEX(md5(TO_JSON_STRING((
       SELECT
         AS STRUCT * EXCEPT({{ excluded_cols }})
       FROM
         source AS source_inner
       WHERE
-        source_inner.{{event_id}} = source.{{ event_id }})) AS json_data
+        source_inner.{{event_id}} = source.{{ event_id }})))) AS hashed_data
   FROM
     source ),
 
@@ -71,7 +71,7 @@ WITH
       -- If the sub_group_num and data matches the rows are subseeding each other and 
       --have the same value in all except the excluded columns 
       sub_group_data.sub_group_num=sub_group_data_inner.sub_group_num
-      and sub_group_data.json_data = sub_group_data_inner.json_data
+      and sub_group_data.hashed_data = sub_group_data_inner.hashed_data
       ) AS valid_from,
     (
     SELECT
@@ -82,7 +82,7 @@ WITH
       -- If the sub_group_num and data matches the rows are subseeding each other and 
       --have the same value in all except the excluded columns 
       sub_group_data.sub_group_num=sub_group_data_inner.sub_group_num
-      and sub_group_data.json_data = sub_group_data_inner.json_data
+      and sub_group_data.hashed_data = sub_group_data_inner.hashed_data
       ) AS valid_to
   FROM
     sub_group_data),
@@ -90,7 +90,7 @@ WITH
   deduplicated AS (
   SELECT
     * 
-      EXCEPT(json_data,
+      EXCEPT(
       row_num,
       sub_group_num,
       end_time,
@@ -98,7 +98,7 @@ WITH
   FROM (
     SELECT
       *,
-      ROW_NUMBER() OVER(PARTITION BY json_data, valid_from, valid_to) AS row_num
+      ROW_NUMBER() OVER(PARTITION BY hashed_data, valid_from, valid_to) AS row_num
     FROM
       added_start_end )
   WHERE

@@ -1,0 +1,3 @@
+product_id,brand,supplier,price,hashed_data,valid_from,valid_to,version
+5, 1, 1, 1,c7f526054dda70ef428f23ce076cc3d4, "2021-01-11 00:00:00", "2050-01-01 00:00:00.00",1
+1, 1, 1, 1,c7f526054dda70ef428f23ce076cc3d3, "2021-01-11 00:00:00", "2050-01-01 00:00:00.00",1
