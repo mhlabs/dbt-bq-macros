@@ -4,29 +4,6 @@
     )
 }}
 
-{% if False %}
-
-
-WITH source AS (
-    SELECT
-        *
-    FROM
-        {{ ref('full_scd_1_seed') }}
-),
-
-scd as (
-    {{dbt_bq_macros.log_to_scd('source', 'product_id', 'event_id', 'updated_at', 'updated_at, event_id')}}
-)
-
-select
-    *,
-    {{ dbt_utils.surrogate_key(['product_id', 'valid_from']) }} AS scd_id
-from
-scd
-
-{% else %}
-
-
 WITH temp_scd_source AS (
     SELECT
         *
@@ -40,10 +17,17 @@ full_scd AS (
     from {{ this }}
 ),
 
-temp_scd as (
+temp_scd_ as (
     {{dbt_bq_macros.log_to_scd('temp_scd_source', 'product_id', 'event_id', 'updated_at', 'updated_at, event_id')}}
 ),
 
+temp_scd as (
+    select
+        *,
+        {{ dbt_utils.surrogate_key(['product_id', 'valid_from']) }} AS scd_id
+    from
+    temp_scd_
+)
 
 merge_scd AS (
     select
@@ -85,6 +69,3 @@ select
     *
 from
 merge_scd
-
-
-{% endif %}
