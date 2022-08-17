@@ -31,33 +31,46 @@ WITH
   FROM
     {{ table_ }}),
 
+  deduplicated_source as (
+    SELECT
+      * EXCEPT(row_num)
+    FROM (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY {{ id }}, {{ updated_at }}) as row_num
+      FROM
+        source
+    )
+    WHERE row_num = 1
+  ),
+
   sub_group_data AS (
   SELECT
     *,
     -- Substract row numbers over the id that identifies the object with row number that compares if any change in relevant data has occured,
     --- this will later be used to calculate valid_from and valid_to for rows
-    ROW_NUMBER() OVER (PARTITION BY source.{{ id }} ORDER BY source.{{ updated_at }} DESC) - 
+    ROW_NUMBER() OVER (PARTITION BY deduplicated_source.{{ id }} ORDER BY deduplicated_source.{{ updated_at }} DESC) - 
       ROW_NUMBER() OVER(
         PARTITION BY TO_JSON_STRING((
           SELECT AS STRUCT * EXCEPT({{ excluded_cols }})
           FROM
-            source AS source_inner
+            deduplicated_source AS deduplicated_source_inner
           WHERE
-            source_inner.{{event_id}} = source.{{ event_id }}))) AS sub_group_num,
+            deduplicated_source_inner.{{event_id}} = deduplicated_source.{{ event_id }}))) AS sub_group_num,
     -- next update to a row with matching id becomes the end time, subtracting 1 millisecond to not get overlaps, if no row comes after the end
     -- time is set to 2050-01-01.
-    COALESCE( LEAD(timestamp_sub(source.{{ updated_at }}, INTERVAL 1 MILLISECOND), 1) OVER(PARTITION BY source.{{ id }} ORDER BY {{ updated_at }}),
-      "2050-01-01 00:00:00" ) AS end_time,
+    COALESCE( LEAD(timestamp_sub(deduplicated_source.{{ updated_at }}, INTERVAL 1 MICROSECOND), 1) OVER(PARTITION BY deduplicated_source.{{ id }} ORDER BY {{ updated_at }}),
+      "9999-12-31 23:59:59.999999 UTC" ) AS end_time,
     -- add a json string with all data minus the columns that should be excluded
     TO_HEX(md5(TO_JSON_STRING((
       SELECT
         AS STRUCT * EXCEPT({{ excluded_cols }})
       FROM
-        source AS source_inner
+        deduplicated_source AS deduplicated_source_inner
       WHERE
-        source_inner.{{event_id}} = source.{{ event_id }})))) AS hashed_data
+        deduplicated_source_inner.{{event_id}} = deduplicated_source.{{ event_id }})))) AS hashed_data
   FROM
-    source ),
+    deduplicated_source ),
 
   added_start_end AS (
   SELECT
