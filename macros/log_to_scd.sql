@@ -3,9 +3,8 @@
     event_id,
     updated_at,
     excluded_cols) -%}
-  -- Macro that creates a slowly changing dimension table, adding valid_from and valid_to by
-  -- looking if something in all columns except the excluded ones has changed between rows.
-  -- Parameters
+  -- Macro that creates an scd table checking if something in all columns except the excluded ones has changed between rows.
+  -- Parameters 
   -------------
   -- table_: a cte from the context where this macro is called
   -- id: identifier for the object, e.g user_id
@@ -31,89 +30,62 @@ WITH
   FROM
     {{ table_ }}),
 
-  sub_group_data AS (
+  deduplicate_id_per_timestamp AS (
+    SELECT
+      * EXCEPT(row_num)
+    FROM
+    (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY {{ id }}, {{ updated_at }}) AS row_num
+      FROM
+        source
+    )
+    WHERE row_num = 1
+  ),
+
+  added_hashed_data AS (
   SELECT
     *,
-    -- Substract row numbers over the id that identifies the object with row number that compares if any change in relevant data has occured,
-    --- this will later be used to calculate valid_from and valid_to for rows
-    ROW_NUMBER() OVER (PARTITION BY source.{{ id }} ORDER BY source.{{ updated_at }} DESC) - 
-      ROW_NUMBER() OVER(
-        PARTITION BY TO_JSON_STRING((
-          SELECT AS STRUCT * EXCEPT({{ excluded_cols }})
-          FROM
-            source AS source_inner
-          WHERE
-            source_inner.{{event_id}} = source.{{ event_id }}))) AS sub_group_num,
-    -- next update to a row with matching id becomes the end time, subtracting 1 millisecond to not get overlaps, if no row comes after the end
-    -- time is set to 2050-01-01.
-    COALESCE( LEAD(timestamp_sub(source.{{ updated_at }}, INTERVAL 1 MILLISECOND), 1) OVER(PARTITION BY source.{{ id }} ORDER BY {{ updated_at }}),
-      "2050-01-01 00:00:00" ) AS end_time,
-    -- add a json string with all data minus the columns that should be excluded
-    TO_JSON_STRING((
+    TO_HEX(md5(TO_JSON_STRING((
       SELECT
         AS STRUCT * EXCEPT({{ excluded_cols }})
       FROM
-        source AS source_inner
+        deduplicate_id_per_timestamp AS source_inner
       WHERE
-        source_inner.{{event_id}} = source.{{ event_id }})) AS json_data
+        source_inner.{{event_id}} = deduplicate_id_per_timestamp.{{ event_id }})))) AS hashed_data
   FROM
-    source ),
+    deduplicate_id_per_timestamp),
 
-  added_start_end AS (
+  added_previous_hashed_data AS (
   SELECT
     *,
-    (
-    SELECT
-      MIN({{ updated_at }})
-    FROM
-      sub_group_data AS sub_group_data_inner
-    WHERE
-      -- If the sub_group_num and data matches the rows are subseeding each other and 
-      --have the same value in all except the excluded columns 
-      sub_group_data.sub_group_num=sub_group_data_inner.sub_group_num
-      and sub_group_data.json_data = sub_group_data_inner.json_data
-      ) AS valid_from,
-    (
-    SELECT
-      MAX(end_time)
-    FROM
-      sub_group_data AS sub_group_data_inner
-    WHERE
-      -- If the sub_group_num and data matches the rows are subseeding each other and 
-      --have the same value in all except the excluded columns 
-      sub_group_data.sub_group_num=sub_group_data_inner.sub_group_num
-      and sub_group_data.json_data = sub_group_data_inner.json_data
-      ) AS valid_to
+    LAG(hashed_data) OVER(partition by {{ id }} order by {{ updated_at }}) as previous_hashed_data
   FROM
-    sub_group_data),
+    added_hashed_data
+  ),
 
   deduplicated AS (
   SELECT
-    * 
-      EXCEPT(json_data,
-      row_num,
-      sub_group_num,
-      end_time,
-      {{ excluded_cols }}),
-  FROM (
-    SELECT
-      *,
-      ROW_NUMBER() OVER(PARTITION BY json_data, valid_from, valid_to) AS row_num
-    FROM
-      added_start_end )
-  WHERE
-    row_num = 1 ),
+      * EXCEPT(hashed_data, previous_hashed_data) 
+  FROM added_previous_hashed_data 
+  where hashed_data != previous_hashed_data or previous_hashed_data is null
+  ),
+
+added_valid_to as (
+SELECT
+    *,
+    {{updated_at}} as valid_from,
+    COALESCE(
+        LEAD(TIMESTAMP_SUB({{ updated_at }}, INTERVAL 1 MICROSECOND)) OVER(partition by {{ id }} order by {{ updated_at }}),
+        TIMESTAMP("9999-12-31 23:59:59.999999 UTC")
+    ) as valid_to
+FROM
+    deduplicated
+) 
   
-  added_version AS (
-      SELECT
-        *,
-        ROW_NUMBER() OVER (PARTITION BY {{ id }} ORDER BY valid_from) as version
-     FROM
-      deduplicated
-  )
-    
 SELECT
   *
 FROM
-  added_version
+  added_valid_to
 {%- endmacro -%}
